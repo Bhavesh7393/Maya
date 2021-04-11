@@ -47,7 +47,7 @@ def list_of_shader_connections_function(shader_loop):
 def face_ID_function(per_face_loop):
     # extract face ID from selected faces
     # input: a list of faces
-    if '[' in per_face_loop.encode() and ']' in per_face_loop.encode():
+    if '[' in per_face_loop and ']' in per_face_loop:
         start = per_face_loop.find("[") + len("[")
         end = per_face_loop.find("]")
         combine = per_face_loop[start:end]
@@ -360,9 +360,13 @@ def main_function():
                 
             try:
                 set_shader_float_values_attribute_function(changed_shader_parameter_dictionary['float_parameters'], per_face_shader_list, shape_list_function(viewport_selection)[shape])
-    
+            except:
+                pass
+            try:
                 set_shader_color_values_attribute_function(changed_shader_parameter_dictionary['color_parameters'], per_face_shader_list, shape_list_function(viewport_selection)[shape])
-    
+            except:
+                pass
+            try:
                 set_shader_bump_values_attribute_function(per_face_shader_list, shape_list_function(viewport_selection)[shape])
             except:
                 pass
