@@ -12,7 +12,6 @@ def position(selection_loop):
     cmds.select(selection_loop+'.vtx[*]')
     allvtx = cmds.ls(selection=True, flatten=True)
     vtxpos = []
-    
     for vtx in allvtx:
         ppos = cmds.pointPosition(vtx)
         vtxpos.append(ppos)
@@ -22,14 +21,10 @@ def maya_pref(selection, shape):
     for obj in range(len(shape)):
         if cmds.attributeQuery('mtoa_varying_Pref', node=shape[obj], exists=True) == False:
             cmds.addAttr(shape[obj], longName='mtoa_varying_Pref', dataType='vectorArray')
-            
             vtxpos = position(selection[obj])
-            
             cmds.setAttr(shape[obj] + '.mtoa_varying_Pref', len(vtxpos), *vtxpos, type='vectorArray')
-        
         else:
             pass
-        
     cmds.select(selection)
 
 def houdini_pref(selection, shape):
@@ -37,15 +32,11 @@ def houdini_pref(selection, shape):
         if cmds.attributeQuery('Pref', node=shape[obj], exists=True) == False:
             cmds.addAttr(shape[obj], longName='Pref', dataType='vectorArray')
             cmds.addAttr(shape[obj], longName="Pref_AbcGeomScope", dataType="string")
-            
             vtxpos = position(selection[obj])
-                
             cmds.setAttr(shape[obj] + '.Pref', len(vtxpos), *vtxpos, type='vectorArray')
             cmds.setAttr(shape[obj]+".Pref_AbcGeomScope", "var", type="string")
-        
         else:
             pass
-        
     cmds.select(selection)
 
 def both_pref(selection, shape):
@@ -54,16 +45,12 @@ def both_pref(selection, shape):
             cmds.addAttr(shape[obj], longName='mtoa_varying_Pref', dataType='vectorArray')
             cmds.addAttr(shape[obj], longName='Pref', dataType='vectorArray')
             cmds.addAttr(shape[obj], longName="Pref_AbcGeomScope", dataType="string")
-            
             vtxpos = position(selection[obj])
-                
             cmds.setAttr(shape[obj] + '.mtoa_varying_Pref', len(vtxpos), *vtxpos, type='vectorArray')
             cmds.setAttr(shape[obj] + '.Pref', len(vtxpos), *vtxpos, type='vectorArray')
             cmds.setAttr(shape[obj]+".Pref_AbcGeomScope", "var", type="string")
-        
         else:
             pass
-        
     cmds.select(selection)
 
 def generate_pref():
@@ -103,11 +90,9 @@ def delete_pref(shape):
             pass
 
 def pref_win():
-    
     if cmds.window( "pref", exists=True ):
         cmds.deleteUI( "pref" )
-    
-    pref = cmds.window( "pref", title="Generate Pref v1.0", widthHeight=(200,200) )
+    pref = cmds.window( "pref", title="Generate Pref v1.0", width=200, height=200 )
     cmds.columnLayout( adjustableColumn=True )
     cmds.text( label='' )
     cmds.text( label='Generate Pref for Arnold' )
