@@ -63,9 +63,13 @@ def generate_pref():
     elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == False and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == True:
         houdini_pref(selection(), shape())
         print("Pref generated on frame %s!" % int(cmds.currentTime(query=True)))
+        print('Please export Alembic with "Pref" attribute for Houdini.')
+        confirm = cmds.confirmDialog( title='Note', message='Please export Alembic with "Pref" attribute for Houdini.', button=['Okay'], defaultButton='Okay' )
     elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == True and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == True:
         both_pref(selection(), shape())
         print("Pref generated on frame %s!" % int(cmds.currentTime(query=True)))
+        print('Please export Alembic with "Pref" attribute for Houdini.')
+        confirm = cmds.confirmDialog( title='Note', message='Please export Alembic with "Pref" attribute for Houdini.', button=['Okay'], defaultButton='Okay' )
     elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == False and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == False:
         print("Please select at least one DCC!")
     else:
