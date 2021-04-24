@@ -107,7 +107,7 @@ def pref_win():
     if cmds.window( "pref", exists=True ):
         cmds.deleteUI( "pref" )
     
-    pref = cmds.window( "pref", title="Generate Pref v1.0", widthHeight=(170,170) )
+    pref = cmds.window( "pref", title="Generate Pref v1.0", widthHeight=(200,200) )
     cmds.columnLayout( adjustableColumn=True )
     cmds.text( label='' )
     cmds.text( label='Generate Pref for Arnold' )
