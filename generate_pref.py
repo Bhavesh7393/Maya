@@ -8,97 +8,84 @@ def shape():
     shp = cmds.listRelatives(selection(), type='shape', allDescendents=True, noIntermediate=True, fullPath=True)
     return(shp)
 
-def transform():
-    trans = cmds.listRelatives(shape(), type='transform', parent=True, fullPath=True)
-    return(trans)
+def position(selection_loop):
+    cmds.select(selection_loop+'.vtx[*]')
+    allvtx = cmds.ls(selection=True, flatten=True)
+    vtxpos = []
+    
+    for vtx in allvtx:
+        ppos = cmds.pointPosition(vtx)
+        vtxpos.append(ppos)
+    return(vtxpos)
 
-def maya_pref(sel, shp, trans):
-    for obj in range(len(shp)):
-        if cmds.attributeQuery('mtoa_varying_Pref', node=shp[obj], exists=True) == False:
-            cmds.addAttr(shp[obj], longName='mtoa_varying_Pref', dataType='vectorArray')
-
-            cmds.select(trans[obj]+'.vtx[*]')
-            allvtx = cmds.ls(selection=True, flatten=True)
-            vtxpos = []
+def maya_pref(selection, shape):
+    for obj in range(len(shape)):
+        if cmds.attributeQuery('mtoa_varying_Pref', node=shape[obj], exists=True) == False:
+            cmds.addAttr(shape[obj], longName='mtoa_varying_Pref', dataType='vectorArray')
             
-            for vtx in allvtx:
-                ppos = cmds.pointPosition(vtx)
-                vtxpos.append(ppos)
-                
-            cmds.setAttr(shp[obj] + '.mtoa_varying_Pref', len(vtxpos), *vtxpos, type='vectorArray')
+            vtxpos = position(selection[obj])
+            
+            cmds.setAttr(shape[obj] + '.mtoa_varying_Pref', len(vtxpos), *vtxpos, type='vectorArray')
         
         else:
             pass
         
-    cmds.select(sel)
+    cmds.select(selection)
 
-def houdini_pref(sel, shp, trans):
-    for obj in range(len(shp)):
-        if cmds.attributeQuery('Pref', node=shp[obj], exists=True) == False:
-            cmds.addAttr(shp[obj], longName='Pref', dataType='vectorArray')
-            cmds.addAttr(shp[obj], longName="Pref_AbcGeomScope", dataType="string")
+def houdini_pref(selection, shape):
+    for obj in range(len(shape)):
+        if cmds.attributeQuery('Pref', node=shape[obj], exists=True) == False:
+            cmds.addAttr(shape[obj], longName='Pref', dataType='vectorArray')
+            cmds.addAttr(shape[obj], longName="Pref_AbcGeomScope", dataType="string")
             
-            cmds.select(trans[obj]+'.vtx[*]')
-            allvtx = cmds.ls(selection=True, flatten=True)
-            vtxpos = []
-            
-            for vtx in allvtx:
-                ppos = cmds.pointPosition(vtx)
-                vtxpos.append(ppos)
+            vtxpos = position(selection[obj])
                 
-            cmds.setAttr(shp[obj] + '.Pref', len(vtxpos), *vtxpos, type='vectorArray')
-            cmds.setAttr(shp[obj]+".Pref_AbcGeomScope", "var", type="string")
+            cmds.setAttr(shape[obj] + '.Pref', len(vtxpos), *vtxpos, type='vectorArray')
+            cmds.setAttr(shape[obj]+".Pref_AbcGeomScope", "var", type="string")
         
         else:
             pass
         
-    cmds.select(sel)
+    cmds.select(selection)
 
-def both_pref(sel, shp, trans):
-    for obj in range(len(shp)):
-        if cmds.attributeQuery('mtoa_varying_Pref', node=shp[obj], exists=True) == False and cmds.attributeQuery('Pref', node=shp[obj], exists=True) == False:
-            cmds.addAttr(shp[obj], longName='mtoa_varying_Pref', dataType='vectorArray')
-            cmds.addAttr(shp[obj], longName='Pref', dataType='vectorArray')
+def both_pref(selection, shape):
+    for obj in range(len(shape)):
+        if cmds.attributeQuery('mtoa_varying_Pref', node=shape[obj], exists=True) == False and cmds.attributeQuery('Pref', node=shape[obj], exists=True) == False:
+            cmds.addAttr(shape[obj], longName='mtoa_varying_Pref', dataType='vectorArray')
+            cmds.addAttr(shape[obj], longName='Pref', dataType='vectorArray')
+            cmds.addAttr(shape[obj], longName="Pref_AbcGeomScope", dataType="string")
             
-            cmds.addAttr(shp[obj], longName="Pref_AbcGeomScope", dataType="string")
-            cmds.setAttr(shp[obj]+".Pref_AbcGeomScope", "var", type="string")
-            
-            cmds.select(trans[obj]+'.vtx[*]')
-            allvtx = cmds.ls(selection=True, flatten=True)
-            vtxpos = []
-            
-            for vtx in allvtx:
-                ppos = cmds.pointPosition(vtx)
-                vtxpos.append(ppos)
+            vtxpos = position(selection[obj])
                 
-            cmds.setAttr(shp[obj] + '.mtoa_varying_Pref', len(vtxpos), *vtxpos, type='vectorArray')
-            cmds.setAttr(shp[obj] + '.Pref', len(vtxpos), *vtxpos, type='vectorArray')
+            cmds.setAttr(shape[obj] + '.mtoa_varying_Pref', len(vtxpos), *vtxpos, type='vectorArray')
+            cmds.setAttr(shape[obj] + '.Pref', len(vtxpos), *vtxpos, type='vectorArray')
+            cmds.setAttr(shape[obj]+".Pref_AbcGeomScope", "var", type="string")
         
         else:
             pass
         
-    cmds.select(sel)
+    cmds.select(selection)
 
 def generate_pref():
     cmds.currentTime( cmds.intFieldGrp( "frame", query=True, value1=True) )
     if cmds.attributeQuery('mtoa_varying_Pref', node=shape()[0], exists=True) == True or cmds.attributeQuery('Pref', node=shape()[0], exists=True) == True or cmds.attributeQuery('Pref_AbcGeomScope', node=shape()[0], exists=True) == True:
         print("Pref already exist!")
     elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == True and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == False:
-        maya_pref(selection(), shape(), transform())
+        maya_pref(selection(), shape())
         print("Pref generated on frame %s!" % int(cmds.currentTime(query=True)))
     elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == False and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == True:
-        houdini_pref(selection(), shape(), transform())
+        houdini_pref(selection(), shape())
         print("Pref generated on frame %s!" % int(cmds.currentTime(query=True)))
     elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == True and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == True:
-        both_pref(selection(), shape(), transform())
+        both_pref(selection(), shape())
         print("Pref generated on frame %s!" % int(cmds.currentTime(query=True)))
     elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == False and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == False:
         print("Please select at least one DCC!")
     else:
         pass
 
-def delete_pref(shp):
-    for obj in shp:
+def delete_pref(shape):
+    for obj in shape:
         if cmds.attributeQuery('mtoa_varying_Pref', node=obj, exists=True) == False and cmds.attributeQuery('Pref', node=obj, exists=True) == False and cmds.attributeQuery('Pref_AbcGeomScope', node=obj, exists=True) == False:
             print("Pref doesn't exist!")
         else:
