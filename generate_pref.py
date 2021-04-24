@@ -128,7 +128,7 @@ def pref_win():
     cmds.text( label='3. Type frame number' )
     cmds.text( label='4. Generate Pref' )
     cmds.text( label='' )
-    cmds.checkBoxGrp( "dcc", numberOfCheckBoxes=2, label='DCC:', labelArray2=['Maya', 'Houdini/Alembic'], columnAlign=(1, "center"), value1=True, columnWidth3=(50,70,130) )
+    cmds.checkBoxGrp( "dcc", numberOfCheckBoxes=2, label='DCC:', labelArray2=['MtoA', 'HtoA/Alembic'], columnAlign=(1, "center"), value1=True, columnWidth3=(50,70,130) )
     cmds.intFieldGrp( "frame", label="Frame:", value1=cmds.currentTime( query=True ), columnAlign=(1, "center"), columnWidth2=(50,180))
     cmds.text( label='' )
     cmds.button( label='Generate Pref', command="generate_pref()" )
