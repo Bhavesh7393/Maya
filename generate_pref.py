@@ -123,6 +123,8 @@ def pref_win():
     pref = cmds.window( "pref", title="Generate Pref v1.0", widthHeight=(170,170) )
     cmds.columnLayout( adjustableColumn=True )
     cmds.text( label='' )
+    cmds.text( label='Generate Pref for Arnold' )
+    cmds.text( label='' )
     cmds.text( label='1. Drag and select mesh on viewport' )
     cmds.text( label='2. Select one or both DCCs' )
     cmds.text( label='3. Type frame number' )
