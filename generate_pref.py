@@ -75,14 +75,15 @@ def delete_pref(shape):
     for obj in shape:
         if cmds.attributeQuery('mtoa_varying_Pref', node=obj, exists=True) == False and cmds.attributeQuery('Pref', node=obj, exists=True) == False and cmds.attributeQuery('Pref_AbcGeomScope', node=obj, exists=True) == False:
             print("Pref doesn't exist!")
-        else:
-            pass
-        if cmds.attributeQuery('mtoa_varying_Pref', node=obj, exists=True) == True:
+        elif cmds.attributeQuery('mtoa_varying_Pref', node=obj, exists=True) == True and cmds.attributeQuery('Pref', node=obj, exists=True) == True and cmds.attributeQuery('Pref_AbcGeomScope', node=obj, exists=True) == True:
+            cmds.deleteAttr(obj+'.mtoa_varying_Pref')
+            cmds.deleteAttr(obj+'.Pref')
+            cmds.deleteAttr(obj+'.Pref_AbcGeomScope')
+            print("Pref deleted!")
+        elif cmds.attributeQuery('mtoa_varying_Pref', node=obj, exists=True) == True:
             cmds.deleteAttr(obj+'.mtoa_varying_Pref')
             print("Pref deleted!")
-        else:
-            pass
-        if cmds.attributeQuery('Pref', node=obj, exists=True) == True and cmds.attributeQuery('Pref_AbcGeomScope', node=obj, exists=True) == True:
+        elif cmds.attributeQuery('Pref', node=obj, exists=True) == True and cmds.attributeQuery('Pref_AbcGeomScope', node=obj, exists=True) == True:
             cmds.deleteAttr(obj+'.Pref')
             cmds.deleteAttr(obj+'.Pref_AbcGeomScope')
             print("Pref deleted!")
