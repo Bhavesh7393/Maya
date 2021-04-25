@@ -105,7 +105,7 @@ def delete_pref(shape):
             pass
 
 # Pref UI creation
-def pref_win():
+def pref_ui():
     if cmds.window( "pref", exists=True ):
         cmds.deleteUI( "pref" )
     pref = cmds.window( "pref", title="Generate Pref v1.0", width=200, height=200 )
@@ -126,4 +126,4 @@ def pref_win():
     cmds.button( label='Close', command=('cmds.deleteUI(\"' + "pref" + '\", window=True)') )
     cmds.showWindow( "pref" )
 
-pref_win()
+pref_ui()
