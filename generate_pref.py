@@ -1,13 +1,18 @@
+# Generate Pref for Arnold.
+
 import maya.cmds as cmds
 
+# Selection list
 def selection():
     sel = cmds.ls(selection=True)
     return(sel)
 
+# Shape list from selection
 def shape():
     shp = cmds.listRelatives(selection(), type='shape', allDescendents=True, noIntermediate=True, fullPath=True)
     return(shp)
 
+# Iterate through selected geometries to get list of all vertices world position
 def position(selection_loop):
     cmds.select(selection_loop+'.vtx[*]')
     allvtx = cmds.ls(selection=True, flatten=True)
@@ -17,6 +22,7 @@ def position(selection_loop):
         vtxpos.append(ppos)
     return(vtxpos)
 
+# Pref attribute generation for Maya/Arnold
 def maya_pref(selection, shape):
     for obj in range(len(shape)):
         if cmds.attributeQuery('mtoa_varying_Pref', node=shape[obj], exists=True) == False:
@@ -27,6 +33,7 @@ def maya_pref(selection, shape):
             pass
     cmds.select(selection)
 
+# Pref attribute generation for Houdini/Arnold via Alembic
 def houdini_pref(selection, shape):
     for obj in range(len(shape)):
         if cmds.attributeQuery('Pref', node=shape[obj], exists=True) == False:
@@ -39,6 +46,7 @@ def houdini_pref(selection, shape):
             pass
     cmds.select(selection)
 
+# Pref attribute generation for both Maya/Arnold and Houdini/Arnold
 def both_pref(selection, shape):
     for obj in range(len(shape)):
         if cmds.attributeQuery('mtoa_varying_Pref', node=shape[obj], exists=True) == False and cmds.attributeQuery('Pref', node=shape[obj], exists=True) == False:
@@ -53,6 +61,7 @@ def both_pref(selection, shape):
             pass
     cmds.select(selection)
 
+# Pref generation logic based on selection in UI
 def generate_pref():
     cmds.currentTime( cmds.intFieldGrp( "frame", query=True, value1=True) )
     if cmds.attributeQuery('mtoa_varying_Pref', node=shape()[0], exists=True) == True or cmds.attributeQuery('Pref', node=shape()[0], exists=True) == True or cmds.attributeQuery('Pref_AbcGeomScope', node=shape()[0], exists=True) == True:
@@ -75,6 +84,7 @@ def generate_pref():
     else:
         pass
 
+# Delete Pref attribute.
 def delete_pref(shape):
     for obj in shape:
         if cmds.attributeQuery('mtoa_varying_Pref', node=obj, exists=True) == False and cmds.attributeQuery('Pref', node=obj, exists=True) == False and cmds.attributeQuery('Pref_AbcGeomScope', node=obj, exists=True) == False:
@@ -94,6 +104,7 @@ def delete_pref(shape):
         else:
             pass
 
+# Pref UI creation
 def pref_win():
     if cmds.window( "pref", exists=True ):
         cmds.deleteUI( "pref" )
