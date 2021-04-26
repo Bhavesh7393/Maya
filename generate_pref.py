@@ -1,4 +1,16 @@
-# Generate Pref for Arnold.
+'''
+
+Generate Pref for Arnold.
+
+1. Drag and select mesh on viewport
+2. Select one or both DCCs
+3. Type frame number
+4. Generate Pref
+
+Bhavesh Budhkar
+bhaveshbudhkar@yahoo.com
+
+'''
 
 import maya.cmds as cmds
 
@@ -108,15 +120,19 @@ def delete_pref(shape):
 def pref_ui():
     if cmds.window( "pref", exists=True ):
         cmds.deleteUI( "pref" )
-    pref = cmds.window( "pref", title="Generate Pref v1.0", width=200, height=200 )
+    cmds.window( "pref", title="Generate Pref v1.0", width=200, height=250 )
     cmds.columnLayout( adjustableColumn=True )
+    cmds.text( label='' )
+    cmds.text( label='Bhavesh Budhkar    ', align='right' )
+    cmds.text( label='bhaveshbudhkar@yahoo.com    ', align='right' )
+    cmds.text( label='' )
     cmds.text( label='' )
     cmds.text( label='Generate Pref for Arnold' )
     cmds.text( label='' )
-    cmds.text( label='1. Drag and select mesh on viewport' )
-    cmds.text( label='2. Select one or both DCCs' )
-    cmds.text( label='3. Type frame number' )
-    cmds.text( label='4. Generate Pref' )
+    cmds.text( label='    1. Drag and select mesh on viewport', align='left' )
+    cmds.text( label='    2. Select one or both DCCs', align='left' )
+    cmds.text( label='    3. Type frame number', align='left' )
+    cmds.text( label='    4. Generate Pref', align='left' )
     cmds.text( label='' )
     cmds.checkBoxGrp( "dcc", numberOfCheckBoxes=2, label='DCC:', labelArray2=['MtoA', 'HtoA/Alembic'], columnAlign=(1, "center"), value1=True, columnWidth3=(50,70,130) )
     cmds.intFieldGrp( "frame", label="Frame:", value1=cmds.currentTime( query=True ), columnAlign=(1, "center"), columnWidth2=(50,180))
