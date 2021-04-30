@@ -1,3 +1,36 @@
+'''
+
+Convert polygon based shader assignment to one shader for MtoA.
+
+
+How to use
+
+1. Drag and select objects on the viewport
+2. Give a Shader name and press Assign
+
+
+Features
+
+1. Can identify "file" and "aiImage" nodes for texture paths
+2. Can identify "bump2d" and "aiBump2d" for bump values
+3. Single shaders automatically ignored and does not get replaced with new one
+
+
+Limitations
+
+1. Only works on aiStandardSurface Shader for now.
+2. Does not work on boolean check box shader attributes like Thin Walled and Transmit AOVs (Current limitation from Arnold)
+3. Currently only working in Linux for texture paths as Arnold is replacing ":" Colon with "_" Underscore (Current limitation from Arnold)
+4. Need to have direct connections with shaders and no colorCorrect or any nodes in between
+5. Does not work with procedural textures
+6. Render time is same or slightly higher
+
+Bhavesh Budhkar
+bhaveshbudhkar@yahoo.com
+
+
+'''
+
 import maya.cmds as cmds
 import operator
 import re
@@ -208,20 +241,20 @@ def main_shader_function(all_texture_path_shader_parameter_dictionary_color, all
     # create and connect an aiImage node which contains tokens to access color texture path from shape attribute
     for each_color_path in all_texture_path_shader_parameter_dictionary_color:
         if each_color_path!='normalCamera':
-            texture_color_file = cmds.createNode('aiImage', n=each_color_path+'_aiImage1')
+            texture_color_file = cmds.shadingNode('aiImage', n=cmds.textFieldButtonGrp( "shader_name", query=True, text=True )+"_"+each_color_path+'_aiImage1', asTexture=True)
             cmds.setAttr(texture_color_file+'.filename', '<attr:path_'+each_color_path+' index:face_set>', type='string')
             cmds.connectAttr(texture_color_file+'.outColor', main_shader+'.'+each_color_path)
     
     # create and connect an aiImage node which contains tokens to access scalar texture path from shape attribute
     for each_float_path in all_texture_path_shader_parameter_dictionary_float:
-        texture_scalar_file = cmds.createNode('aiImage', n=each_float_path+'_aiImage1')
+        texture_scalar_file = cmds.shadingNode('aiImage', n=cmds.textFieldButtonGrp( "shader_name", query=True, text=True )+"_"+each_float_path+'_aiImage1', asTexture=True)
         cmds.setAttr(texture_scalar_file+'.filename', '<attr:path_'+each_float_path+' index:face_set>', type='string')
         cmds.connectAttr(texture_scalar_file+'.outColorR', main_shader+'.'+each_float_path)
     
     # create and connect a user data color node which contains all the changed values of color shader parameters
     for each_color_parameter in all_changed_shader_parameter_dictionary_color:
         if each_color_parameter!='normalCamera':
-            user_data_color = cmds.createNode('aiUserDataColor', n=each_color_parameter+'_aiUserDataColor1')
+            user_data_color = cmds.shadingNode('aiUserDataColor', n=cmds.textFieldButtonGrp( "shader_name", query=True, text=True )+"_"+each_color_parameter+'_aiUserDataColor1', asUtility=True)
             cmds.setAttr(user_data_color+'.attribute', each_color_parameter, type='string')
             cmds.setAttr(user_data_color+'.default', get_attribute_function(test_shader+'.'+each_color_parameter)[0][0], get_attribute_function(test_shader+'.'+each_color_parameter)[0][1], get_attribute_function(test_shader+'.'+each_color_parameter)[0][2])
             if cmds.connectionInfo(main_shader+'.'+each_color_parameter, sourceFromDestination=True)=="":
@@ -231,7 +264,7 @@ def main_shader_function(all_texture_path_shader_parameter_dictionary_color, all
     
     # create and connect a user data float node which contains all the changed values of float shader parameters
     for each_float_parameter in all_changed_shader_parameter_dictionary_float:
-        user_data_float = cmds.createNode('aiUserDataFloat', n=each_float_parameter+'_aiUserDataFloat1')
+        user_data_float = cmds.shadingNode('aiUserDataFloat', n=cmds.textFieldButtonGrp( "shader_name", query=True, text=True )+"_"+each_float_parameter+'_aiUserDataFloat1', asUtility=True)
         cmds.setAttr(user_data_float+'.attribute', each_float_parameter, type='string')
         cmds.setAttr(user_data_float+'.default', get_attribute_function(test_shader+'.'+each_float_parameter))
         if cmds.connectionInfo(main_shader+'.'+each_float_parameter, sourceFromDestination=True)=="":
@@ -243,12 +276,12 @@ def main_shader_function(all_texture_path_shader_parameter_dictionary_color, all
     
     # create and connect bump nodes
     if 'normalCamera' in all_changed_shader_parameter_dictionary_color:
-        cmds.createNode('aiImage', n='normalCamera_aiImage1')
+        cmds.shadingNode('aiImage', n=cmds.textFieldButtonGrp( "shader_name", query=True, text=True )+'_normalCamera_aiImage1', asTexture=True)
         cmds.setAttr('normalCamera_aiImage1.filename', '<attr:path_normalCamera index:face_set>', type='string')
-        cmds.createNode('aiBump2d', n='normalCamera_aiBump2d1')
+        cmds.shadingNode('aiBump2d', n=cmds.textFieldButtonGrp( "shader_name", query=True, text=True )+'_normalCamera_aiBump2d1', asUtility=True)
         cmds.connectAttr('normalCamera_aiImage1.outColorR', 'normalCamera_aiBump2d1.bumpMap')
         cmds.connectAttr('normalCamera_aiBump2d1.outValue', main_shader+'.normalCamera')
-        cmds.createNode('aiUserDataFloat', n='bumpDepth_aiUserDataFloat1')
+        cmds.shadingNode('aiUserDataFloat', n=cmds.textFieldButtonGrp( "shader_name", query=True, text=True )+'_bumpDepth_aiUserDataFloat1', asUtility=True)
         cmds.connectAttr('bumpDepth_aiUserDataFloat1.outValue', 'normalCamera_aiBump2d1.bumpHeight')
         cmds.setAttr('bumpDepth_aiUserDataFloat1.attribute', 'bumpDepth', type='string')
         cmds.setAttr('bumpDepth_aiUserDataFloat1.default', 0)
@@ -257,13 +290,8 @@ def shader_assignment_function(multiple_shader_object_list, main_shader, test_sh
     # shader assignment only on objects which has multiple shaders per object
     cmds.select(multiple_shader_object_list)
     
-    # a confirm dialog pop up to assign the shader
-    confirm = cmds.confirmDialog( title='Confirm', message='Do you want to apply shader to selection?', button=['Yes','No'], defaultButton='Yes', cancelButton='No', dismissString='No' )
-    if confirm == 'Yes':
-        cmds.hyperShade(assign=main_shader)
-        print("Shader is assigned.")
-    else:
-        print("Shader is created, you can assign it manually.")
+    # shader assignment
+    cmds.hyperShade(assign=main_shader)
     
     # delete test shader
     cmds.delete(test_shader)
@@ -377,10 +405,31 @@ def main_function():
         else:
             pass
     
-    main_shader = cmds.createNode('aiStandardSurface', n='shader_MAT')
+    main_shader = cmds.shadingNode('aiStandardSurface', n=cmds.textFieldButtonGrp( "shader_name", query=True, text=True ), asShader=True)
     
     main_shader_function(all_texture_path_shader_parameter_dictionary['color_parameters'], all_texture_path_shader_parameter_dictionary['float_parameters'], all_changed_shader_parameter_dictionary['color_parameters'], all_changed_shader_parameter_dictionary['float_parameters'], test_shader, main_shader)
     
     shader_assignment_function(multiple_shader_object_list, main_shader, test_shader)
 
-main_function()
+def one_shader_ui():
+    if cmds.window( "one_shader", exists=True ):
+        cmds.deleteUI( "one_shader" )
+    cmds.window( "one_shader", title="Convert Per Poly Shader to One Shader for Arnold", width=200, height=100 )
+    cmds.columnLayout( adjustableColumn=True )
+    cmds.text( label='' )
+    cmds.text( label='Bhavesh Budhkar    ', align='right' )
+    cmds.text( label='bhaveshbudhkar@yahoo.com    ', align='right' )
+    cmds.text( label='' )
+    cmds.text( label='' )
+    cmds.text( label='Convert Per Poly Shaders assignments' )
+    cmds.text( label='to One Shader for Arnold' )
+    cmds.text( label='' )
+    cmds.text( label='1. Drag and select objects on the viewport' )
+    cmds.text( label='2. Give a Shader name and press Assign' )
+    cmds.text( label='' )
+    cmds.textFieldButtonGrp( "shader_name", label='Shader Name: ', text='shader_MAT', buttonLabel='Assign', columnWidth3=(80,120,0), buttonCommand="main_function()" )
+    cmds.text( label='' )
+    cmds.button( label='Close', command=('cmds.deleteUI(\"' + "one_shader" + '\", window=True)') )
+    cmds.showWindow( "one_shader" )
+
+one_shader_ui()
