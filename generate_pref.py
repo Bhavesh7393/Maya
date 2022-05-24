@@ -4,9 +4,24 @@ Generate Pref
 Generate Pref for Maya/Arnold and other DCC like Houdini via Alembic.
 
 Instructions
-Select mesh objects on viewport
-Select frame number in UI
-Press Generate button
+
+    Create Pref for Maya:
+        Select mesh objects on viewport
+        Select frame number in UI
+        Press Generate button
+        
+    Create Pref for other DCCs:
+        Select mesh objects on viewport
+        Select frame number in UI
+        Press Generate button
+        Export selection to Alembic with "Pref" prefix attribute
+        
+    Delete Pref:
+        Select mesh objects on viewport
+        Press Generate button
+
+Python 2 and Python 3
+Maya 2018+
 
 Bhavesh Budhkar
 bhaveshbudhkar@yahoo.com
