@@ -1,145 +1,325 @@
-'''
+"""
+Generate Pref
 
-Generate Pref for Arnold.
+Generate Pref for Maya/Arnold and other DCC like Houdini via Alembic.
 
-1. Drag and select mesh on viewport
-2. Select one or both DCCs
-3. Type frame number
-4. Generate Pref
+Instructions
+Select mesh objects on viewport
+Select frame number in UI
+Press Generate button
 
 Bhavesh Budhkar
 bhaveshbudhkar@yahoo.com
+"""
 
-'''
 
+from PySide2 import QtWidgets, QtCore
+from shiboken2 import wrapInstance
+from sys import stdout
+import maya.OpenMayaUI as omui
+import maya.api.OpenMaya as om
+import maya.api.OpenMayaAnim as oma
 import maya.cmds as cmds
 
-# Selection list
-def selection():
-    sel = cmds.ls(selection=True)
-    return(sel)
 
-# Shape list from selection
-def shape():
-    shp = cmds.listRelatives(selection(), type='shape', allDescendents=True, noIntermediate=True, fullPath=True)
-    return(shp)
+def maya_main_window():
+    """
+    Maya Main Window Pointer
+    :return: QtWidgets.QWidget Object
+    """
+    main_window_ptr = omui.MQtUtil.mainWindow()
+    return wrapInstance(int(main_window_ptr), QtWidgets.QWidget)
 
-# Iterate through selected geometries to get list of all vertices world position
-def position(selection_loop):
-    cmds.select(selection_loop+'.vtx[*]')
-    allvtx = cmds.ls(selection=True, flatten=True)
-    vtxpos = []
-    for vtx in allvtx:
-        ppos = cmds.pointPosition(vtx)
-        vtxpos.append(ppos)
-    return(vtxpos)
 
-# Pref attribute generation for Maya/Arnold
-def maya_pref(selection, shape):
-    for obj in range(len(shape)):
-        if cmds.attributeQuery('mtoa_varying_Pref', node=shape[obj], exists=True) == False:
-            cmds.addAttr(shape[obj], longName='mtoa_varying_Pref', dataType='vectorArray')
-            vtxpos = position(selection[obj])
-            cmds.setAttr(shape[obj] + '.mtoa_varying_Pref', len(vtxpos), *vtxpos, type='vectorArray')
-        else:
+class GeneratePref(QtWidgets.QWidget):
+    """
+    Maya UI Class
+    """
+
+    def __init__(self, title, version, parent=maya_main_window()):
+        """
+        Maya UI Init
+        :param title: Tool Name
+        :param version: Tool Version
+        :param parent: Parent Window
+        """
+        super(GeneratePref, self).__init__(parent)
+
+        self.title = title
+        self.version = version
+
+        self.setWindowTitle("{0} v{1}".format(self.title, self.version))
+
+        self.setWindowFlags(self.windowFlags() ^ QtCore.Qt.WindowContextHelpButtonHint | QtCore.Qt.Window)
+        self.setFixedSize(350, 100)
+
+        self.create_widgets()
+        self.create_layouts()
+        self.create_connections()
+
+    def create_widgets(self):
+        """
+        Create UI Widgets
+        :return: None
+        """
+        self.maya_checkbox = QtWidgets.QCheckBox("Maya")
+        self.maya_checkbox.setChecked(True)
+        self.houdini_checkbox = QtWidgets.QCheckBox("Houdini")
+
+        self.frame_number_label = QtWidgets.QLabel("Frame Number")
+
+        self.frame_number = QtWidgets.QSpinBox()
+        self.frame_number.setRange(0, 100000)
+        self.frame_number.setValue(1001)
+        self.frame_number.setButtonSymbols(QtWidgets.QSpinBox.NoButtons)
+
+        self.generate_button = QtWidgets.QPushButton("Generate")
+
+        self.delete_button = QtWidgets.QPushButton("Delete")
+
+        self.vertical_spacer = QtWidgets.QSpacerItem(20, 40, QtWidgets.QSizePolicy.Minimum,
+                                                     QtWidgets.QSizePolicy.Expanding)
+
+        self.author_label = QtWidgets.QLabel("Bhavesh Budhkar")
+        self.author_label.setDisabled(True)
+        self.author_label.setAlignment(QtCore.Qt.AlignLeft)
+
+        self.email_label = QtWidgets.QLabel("bhaveshbudhkar@yahoo.com")
+        self.email_label.setDisabled(True)
+        self.email_label.setAlignment(QtCore.Qt.AlignRight)
+
+    def create_layouts(self):
+        """
+        Create UI Layouts
+        :return: None
+        """
+        self.info_layout = QtWidgets.QHBoxLayout()
+        self.info_layout.addWidget(self.author_label)
+        self.info_layout.addWidget(self.email_label)
+
+        self.dcc_checkbox_layout = QtWidgets.QGridLayout()
+        self.dcc_checkbox_layout.addWidget(self.maya_checkbox, 0, 0)
+        self.dcc_checkbox_layout.addWidget(self.houdini_checkbox, 0, 1)
+
+        self.pref_layout = QtWidgets.QHBoxLayout()
+        self.pref_layout.addWidget(self.frame_number_label)
+        self.pref_layout.addWidget(self.frame_number)
+        self.pref_layout.addWidget(self.generate_button)
+        self.pref_layout.addWidget(self.delete_button)
+
+        self.main_layout = QtWidgets.QVBoxLayout(self)
+        self.main_layout.addLayout(self.dcc_checkbox_layout)
+        self.main_layout.addLayout(self.pref_layout)
+        self.main_layout.addSpacerItem(self.vertical_spacer)
+        self.main_layout.addLayout(self.info_layout)
+
+        self.setLayout(self.main_layout)
+
+    def create_connections(self):
+        """
+        Signals and Slots
+        :return: None
+        """
+        self.generate_button.clicked.connect(self.generate_pref)
+        self.delete_button.clicked.connect(self.delete_pref)
+
+    @staticmethod
+    def get_current_fps(frame):
+        """
+        Get current FPS
+        :param frame: Current Frame
+        :return: None
+        """
+        # Define current FPS and frame
+        fps = om.MTime.uiUnit()
+        time = om.MTime(frame, fps)
+        oma.MAnimControl.setCurrentTime(time)
+
+    @staticmethod
+    def get_selection():
+        """
+        Get viewport selection.
+        :return: Selection List
+        """
+        # Get shape nodes based on selected group
+        viewport_selection = cmds.ls(selection=True, long=True)
+        shape = cmds.listRelatives(viewport_selection, type="shape", allDescendents=True, fullPath=True)
+
+        # Generate list of Maya Python Objects from shapes list
+        selection_list = om.MSelectionList()
+
+        for obj in shape:
+            selection_list.add(obj)
+
+        return selection_list
+
+    @staticmethod
+    def create_maya_attribute(dependency_object, points_position, typed_attr):
+        """
+        Create Pref attributes for Maya.
+        :param dependency_object: Maya Dependency Object
+        :param points_position: Geometry Points Position
+        :param typed_attr: Maya Typed Attribute
+        :return: None
+        """
+        # Create Pref attribute
+        mtoa_attr = typed_attr.create("mtoa_varying_Pref", "mtoa_varying_Pref",
+                                      om.MFnPointArrayData.kPointArray,
+                                      om.MFnPointArrayData().create(points_position))
+        mtoa_str_attr = typed_attr.create("mtoa_varying_Pref_AbcGeomScope",
+                                          "mtoa_varying_Pref_AbcGeomScope",
+                                          om.MFnData.kString,
+                                          om.MFnStringData().create("var"))
+
+        dependency_object.addAttribute(mtoa_attr)
+        dependency_object.addAttribute(mtoa_str_attr)
+
+    @staticmethod
+    def create_houdini_attribute(dependency_object, points_position, typed_attr):
+        """
+        Create Pref attributes for Houdini.
+        :param dependency_object: Maya Dependency Object
+        :param points_position: Geometry Points Position
+        :param typed_attr: Maya Typed Attribute
+        :return: None
+        """
+        # Create Pref attribute
+        pref_attr = typed_attr.create("Pref", "Pref", om.MFnPointArrayData.kPointArray,
+                                      om.MFnPointArrayData().create(points_position))
+        pref_str_attr = typed_attr.create("Pref_AbcGeomScope", "Pref_AbcGeomScope",
+                                          om.MFnData.kString,
+                                          om.MFnStringData().create("var"))
+
+        dependency_object.addAttribute(pref_attr)
+        dependency_object.addAttribute(pref_str_attr)
+
+    @staticmethod
+    def delete_maya_attribute(dependency_object):
+        """
+        Delete Pref attributes for Maya.
+        :param dependency_object: Maya Dependency Object
+        :return: None
+        """
+        # Remove existing Pref attributes
+        try:
+            remove_mtoa_attr = dependency_object.findPlug("mtoa_varying_Pref", False)
+            remove_mtoa_str_attr = dependency_object.findPlug("mtoa_varying_Pref_AbcGeomScope", False)
+
+            dependency_object.removeAttribute(remove_mtoa_attr.attribute())
+            dependency_object.removeAttribute(remove_mtoa_str_attr.attribute())
+        except RuntimeError:
             pass
-    cmds.select(selection)
 
-# Pref attribute generation for Houdini/Arnold via Alembic
-def houdini_pref(selection, shape):
-    for obj in range(len(shape)):
-        if cmds.attributeQuery('Pref', node=shape[obj], exists=True) == False:
-            cmds.addAttr(shape[obj], longName='Pref', dataType='vectorArray')
-            cmds.addAttr(shape[obj], longName="Pref_AbcGeomScope", dataType="string")
-            vtxpos = position(selection[obj])
-            cmds.setAttr(shape[obj] + '.Pref', len(vtxpos), *vtxpos, type='vectorArray')
-            cmds.setAttr(shape[obj]+".Pref_AbcGeomScope", "var", type="string")
-        else:
-            pass
-    cmds.select(selection)
+    @staticmethod
+    def delete_houdini_attribute(dependency_object):
+        """
+        Delete Pref attributes for Houdini.
+        :param dependency_object: Maya Dependency Object
+        :return: None
+        """
+        try:
+            remove_pref_attr = dependency_object.findPlug("Pref", False)
+            remove_pref_str_attr = dependency_object.findPlug("Pref_AbcGeomScope", False)
 
-# Pref attribute generation for both Maya/Arnold and Houdini/Arnold
-def both_pref(selection, shape):
-    for obj in range(len(shape)):
-        if cmds.attributeQuery('mtoa_varying_Pref', node=shape[obj], exists=True) == False and cmds.attributeQuery('Pref', node=shape[obj], exists=True) == False:
-            cmds.addAttr(shape[obj], longName='mtoa_varying_Pref', dataType='vectorArray')
-            cmds.addAttr(shape[obj], longName='Pref', dataType='vectorArray')
-            cmds.addAttr(shape[obj], longName="Pref_AbcGeomScope", dataType="string")
-            vtxpos = position(selection[obj])
-            cmds.setAttr(shape[obj] + '.mtoa_varying_Pref', len(vtxpos), *vtxpos, type='vectorArray')
-            cmds.setAttr(shape[obj] + '.Pref', len(vtxpos), *vtxpos, type='vectorArray')
-            cmds.setAttr(shape[obj]+".Pref_AbcGeomScope", "var", type="string")
-        else:
-            pass
-    cmds.select(selection)
-
-# Pref generation logic based on selection in UI
-def generate_pref():
-    cmds.currentTime( cmds.intFieldGrp( "frame", query=True, value1=True) )
-    if cmds.attributeQuery('mtoa_varying_Pref', node=shape()[0], exists=True) == True or cmds.attributeQuery('Pref', node=shape()[0], exists=True) == True or cmds.attributeQuery('Pref_AbcGeomScope', node=shape()[0], exists=True) == True:
-        print("Pref already exist!")
-    elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == True and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == False:
-        maya_pref(selection(), shape())
-        print("Pref generated on frame %s!" % int(cmds.currentTime(query=True)))
-    elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == False and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == True:
-        houdini_pref(selection(), shape())
-        print("Pref generated on frame %s!" % int(cmds.currentTime(query=True)))
-        print('Please export Alembic with "Pref" attribute for Houdini.')
-        confirm = cmds.confirmDialog( title='Note', message='Please export Alembic with "Pref" attribute for Houdini.', button=['Okay'], defaultButton='Okay' )
-    elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == True and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == True:
-        both_pref(selection(), shape())
-        print("Pref generated on frame %s!" % int(cmds.currentTime(query=True)))
-        print('Please export Alembic with "Pref" attribute for Houdini.')
-        confirm = cmds.confirmDialog( title='Note', message='Please export Alembic with "Pref" attribute for Houdini.', button=['Okay'], defaultButton='Okay' )
-    elif cmds.checkBoxGrp( "dcc", query=True, value1=True ) == False and cmds.checkBoxGrp( "dcc", query=True, value2=True ) == False:
-        print("Please select at least one DCC!")
-    else:
-        pass
-
-# Delete Pref attribute.
-def delete_pref(shape):
-    for obj in shape:
-        if cmds.attributeQuery('mtoa_varying_Pref', node=obj, exists=True) == False and cmds.attributeQuery('Pref', node=obj, exists=True) == False and cmds.attributeQuery('Pref_AbcGeomScope', node=obj, exists=True) == False:
-            print("Pref doesn't exist!")
-        elif cmds.attributeQuery('mtoa_varying_Pref', node=obj, exists=True) == True and cmds.attributeQuery('Pref', node=obj, exists=True) == True and cmds.attributeQuery('Pref_AbcGeomScope', node=obj, exists=True) == True:
-            cmds.deleteAttr(obj+'.mtoa_varying_Pref')
-            cmds.deleteAttr(obj+'.Pref')
-            cmds.deleteAttr(obj+'.Pref_AbcGeomScope')
-            print("Pref deleted!")
-        elif cmds.attributeQuery('mtoa_varying_Pref', node=obj, exists=True) == True:
-            cmds.deleteAttr(obj+'.mtoa_varying_Pref')
-            print("Pref deleted!")
-        elif cmds.attributeQuery('Pref', node=obj, exists=True) == True and cmds.attributeQuery('Pref_AbcGeomScope', node=obj, exists=True) == True:
-            cmds.deleteAttr(obj+'.Pref')
-            cmds.deleteAttr(obj+'.Pref_AbcGeomScope')
-            print("Pref deleted!")
-        else:
+            dependency_object.removeAttribute(remove_pref_attr.attribute())
+            dependency_object.removeAttribute(remove_pref_str_attr.attribute())
+        except RuntimeError:
             pass
 
-# Pref UI creation
-def pref_ui():
-    if cmds.window( "pref", exists=True ):
-        cmds.deleteUI( "pref" )
-    cmds.window( "pref", title="Generate Pref v1.0", width=200, height=250 )
-    cmds.columnLayout( adjustableColumn=True )
-    cmds.text( label='' )
-    cmds.text( label='Bhavesh Budhkar    ', align='right' )
-    cmds.text( label='bhaveshbudhkar@yahoo.com    ', align='right' )
-    cmds.text( label='' )
-    cmds.text( label='' )
-    cmds.text( label='Generate Pref for Arnold' )
-    cmds.text( label='' )
-    cmds.text( label='    1. Drag and select mesh on viewport', align='left' )
-    cmds.text( label='    2. Select one or both DCCs', align='left' )
-    cmds.text( label='    3. Type frame number', align='left' )
-    cmds.text( label='    4. Generate Pref', align='left' )
-    cmds.text( label='' )
-    cmds.checkBoxGrp( "dcc", numberOfCheckBoxes=2, label='DCC:', labelArray2=['MtoA', 'HtoA/Alembic'], columnAlign=(1, "center"), value1=True, columnWidth3=(50,70,130) )
-    cmds.intFieldGrp( "frame", label="Frame:", value1=cmds.currentTime( query=True ), columnAlign=(1, "center"), columnWidth2=(50,180))
-    cmds.text( label='' )
-    cmds.button( label='Generate Pref', command="generate_pref()" )
-    cmds.button( label='Delete Pref', command="delete_pref(shape())" )
-    cmds.button( label='Close', command=('cmds.deleteUI(\"' + "pref" + '\", window=True)') )
-    cmds.showWindow( "pref" )
+    @staticmethod
+    def create_attribute(selection_list, node):
+        """
+        Create Typed Attribute.
+        :param selection_list: Viewport Selection List
+        :param node: Per object Loop Variable
+        :return: dependency_object, points_position, typed_attr
+        """
+        # DAG node
+        dag_object = selection_list.getDagPath(node)
+        dag_object_node = selection_list.getDagPath(node).node()
 
-pref_ui()
+        # Dependency node to create custom attribute
+        dependency_object = om.MFnDependencyNode(dag_object_node)
+
+        # Mesh object
+        mesh_object = om.MFnMesh(dag_object)
+
+        # Object's vertex positions in world space
+        points_position = mesh_object.getPoints(om.MSpace.kWorld)
+
+        # Entitiy level attribute
+        typed_attr = om.MFnTypedAttribute(dag_object_node)
+
+        return dependency_object, points_position, typed_attr
+
+    def maya_pref(self, dependency_object, points_position, typed_attr):
+        """
+        Create Pref attributes for Maya.
+        :param dependency_object: Maya Dependency Object
+        :param points_position: Geometry Points Position
+        :param typed_attr: Maya Typed Attribute
+        :return: None
+        """
+        self.delete_maya_attribute(dependency_object)
+        self.create_maya_attribute(dependency_object, points_position, typed_attr)
+
+    def houdini_pref(self, dependency_object, points_position, typed_attr):
+        """
+        Create Pref attributes for Houdini.
+        :param dependency_object: Maya Dependency Object
+        :param points_position: Geometry Points Position
+        :param typed_attr: Maya Typed Attribute
+        :return: None
+        """
+        self.delete_houdini_attribute(dependency_object)
+        self.create_houdini_attribute(dependency_object, points_position, typed_attr)
+
+    def generate_pref(self):
+        """
+        Generate Pref on selected objects on specified frame.
+        :return: None
+        """
+
+        self.get_current_fps(self.frame_number.value())
+
+        selection_list = self.get_selection()
+
+        # Loop through selected objects
+        if not selection_list.isEmpty():
+            for node in range(selection_list.length()):
+                dependency_object, points_position, typed_attr = self.create_attribute(selection_list, node)
+
+                if self.maya_checkbox.isChecked() and self.houdini_checkbox.isChecked():
+                    self.maya_pref(dependency_object, points_position, typed_attr)
+                    self.houdini_pref(dependency_object, points_position, typed_attr)
+                elif self.maya_checkbox.isChecked():
+                    self.maya_pref(dependency_object, points_position, typed_attr)
+                elif self.houdini_checkbox.isChecked():
+                    self.houdini_pref(dependency_object, points_position, typed_attr)
+
+            stdout.write("Pref is generated on selected objects on frame {0}.\n".format(self.frame_number.text()))
+        else:
+            om.MGlobal.displayWarning("Please select at least one Geometry.\n")
+
+    def delete_pref(self):
+        """
+        Delete Pref on selected objects.
+        :return: None
+        """
+        selection_list = self.get_selection()
+
+        # Loop through selected objects
+        if not selection_list.isEmpty():
+            for node in range(selection_list.length()):
+                dependency_object, points_position, typed_attr = self.create_attribute(selection_list, node)
+
+                self.delete_maya_attribute(dependency_object)
+                self.delete_houdini_attribute(dependency_object)
+            stdout.write("Pref is delete on selected objects.\n")
+        else:
+            om.MGlobal.displayWarning("Please select at least one Geometry.\n")
+
+
+if __name__ == "__main__":
+    ui = GeneratePref("Generate Pref", 1.0)
+    ui.show()
